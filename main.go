@@ -1,6 +1,6 @@
 package main
 
-import "schema-patcher/src"
+import "kafka-schema-patcher/src"
 
 func main() {
 	src.Setup()

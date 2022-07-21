@@ -3,7 +3,7 @@ package src
 import (
 	"context"
 	"fmt"
-	"schema-patcher/src/kafka"
+	"kafka-schema-patcher/src/kafka"
 	"time"
 
 	kafkago "github.com/segmentio/kafka-go"
@@ -14,12 +14,13 @@ var mustCloseRoutine = false
 
 var signalName string
 var firstSigTime time.Time
-var runningTime time.Time
 
 //Run ...
 func Run() {
 	topic := config.kafkaTopic
 	group := config.kafkaGroupName
+	p := kafka.NewProducer(topic)
+	defer p.Close()
 
 	consumer := kafka.NewConsumer(context.Background(), topic, group, config.kafkaMessageConcurrency, config.kafkaFetchMessageTimeoutInSecond)
 	defer func() {
@@ -29,7 +30,7 @@ func Run() {
 	}()
 
 	gracefully := make(chan bool)
-	go fetchMessages(consumer, topic, gracefully)
+	go handleMessages(consumer, topic, gracefully, p)
 
 	sig := consumer.WaitForOSInterrupt()
 	sigTime := time.Now()
@@ -44,7 +45,7 @@ func Run() {
 	logrus.Info(fmt.Sprintf("gracefully service closed: %s at:%v on topic:%s closed in:%v", signalName, sigTime.UTC(), topic, since))
 }
 
-func fetchMessages(c *kafka.Consumer, topic string, gracefully chan bool) {
+func handleMessages(c *kafka.Consumer, topic string, gracefully chan bool, p *kafka.Producer) {
 	logrus.Info(" [*] Waiting for new kafka messages:", topic)
 	for {
 		if mustCloseRoutine {
@@ -65,18 +66,16 @@ func fetchMessages(c *kafka.Consumer, topic string, gracefully chan bool) {
 			for _, m := range messages {
 				if m.Value != nil && len(m.Value) > 0 {
 					handleMessageCount++
-
-					if msg := handleMessage(m, c.Group); msg != nil && len(msg) != 0 {
+					if msg := handleMessage(m, c.Group, config.kafkaSchemaOldId, config.kafkaSchemaNewId); len(msg) != 0 {
 						totalNewMsgs = append(totalNewMsgs, msg)
 					}
 				}
 			}
 
 			if len(totalNewMsgs) > 0 {
+				p.PublishArray([]byte("avro"), totalNewMsgs)
 				totalTimeTaken, execTime = timeCalc(fetchStartTime, totalTimeTaken)
 				logrus.Info(fmt.Sprintf("%s, state: new msg found to republish in %v(total time: %v)", logID, execTime, totalTimeTaken))
-
-				//TODO: to publish msgs
 			}
 
 			c.CommitMessages(c.Context, messages...)
@@ -84,13 +83,13 @@ func fetchMessages(c *kafka.Consumer, topic string, gracefully chan bool) {
 			logrus.Warn(fmt.Sprintf("%s, state: commit in %v(total time: *%v*)", logID, execTime, totalTimeTaken))
 			logrus.Info(" [*] Waiting for new kafka messages:", topic)
 		}
-
 	}
+
 	logrus.Info(" [*] gracefully stop Waiting for new kafka messages:", topic)
 	gracefully <- true
 }
 
-func handleMessage(m kafkago.Message, group string) []byte {
+func handleMessage(m kafkago.Message, group string, oldId, newId int) []byte {
 	defer func() {
 		if e := recover(); e != nil {
 			err := fmt.Errorf("crashed Topic: %s, for Message offset: %d, value: %s", m.Topic, m.Offset, string(m.Value))
@@ -100,14 +99,11 @@ func handleMessage(m kafkago.Message, group string) []byte {
 		}
 	}()
 
-	_, isAvro, id, err := kafka.DecodeMessage(m)
-	if isAvro && id == uint32(config.kafkaSchemaOldId) && err != nil {
-		logrus.Error("Message Decode error:", err)
-		//FIXME: here we need to republish with new ID
-
+	convert, data := kafka.ConvertIfRequire(m, oldId, newId)
+	if convert {
+		logrus.Info(fmt.Sprintf("Topic: %s, Message: %d-%d converted schema to old:%d to new:%d", m.Topic, m.Partition, m.Offset, oldId, newId))
 	}
-
-	return nil
+	return data
 }
 
 func timeCalc(since time.Time, lastExecTime time.Duration) (time.Duration, time.Duration) {

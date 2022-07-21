@@ -51,6 +51,18 @@ func DecodeMessage(message kafka.Message) ([]byte, bool, uint32, error) {
 	return message.Value, false, 0, nil
 }
 
-func ConvertSchemaMessageID() {
+func ConvertIfRequire(message kafka.Message, oldId, newId int) (bool, []byte) {
+	_, isAvro, id, err := DecodeMessage(message)
+	if isAvro && id == uint32(oldId) && err != nil {
+		schemaIDBytes := make([]byte, 4)
+		binary.BigEndian.PutUint32(schemaIDBytes, uint32(newId))
 
+		var recordValue []byte
+		recordValue = append(recordValue, byte(0))
+		recordValue = append(recordValue, schemaIDBytes...)
+		recordValue = append(recordValue, message.Value[5:]...)
+
+		return true, recordValue
+	}
+	return false, nil
 }

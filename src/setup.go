@@ -4,7 +4,7 @@ import (
 	dot "github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 
-	"schema-patcher/src/kafka"
+	"kafka-schema-patcher/src/kafka"
 )
 
 func Setup() (err error) {

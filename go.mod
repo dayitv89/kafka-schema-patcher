@@ -1,4 +1,4 @@
-module schema-patcher
+module kafka-schema-patcher
 
 go 1.16
 
