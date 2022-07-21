@@ -10,6 +10,6 @@ RUN apk update \
   && apk --no-cache add ca-certificates nano bind-tools \
   && rm -rf /var/cache/apk/*
 WORKDIR /root
-COPY --from=COMPILE_MACHINE /go/src//go/src/github.com/dayitv89/kafka-schema-patcher/main .
-COPY --from=COMPILE_MACHINE /go/src//go/src/github.com/dayitv89/kafka-schema-patcher/.env.default .env
+COPY --from=COMPILE_MACHINE /go/src/github.com/dayitv89/kafka-schema-patcher/main .
+COPY --from=COMPILE_MACHINE /go/src/github.com/dayitv89/kafka-schema-patcher/.env.default .env
 ENTRYPOINT ./main

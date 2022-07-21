@@ -17,3 +17,21 @@ KAFKA_SCHEMA_REGISTRY_URL=http://127.0.0.1:8081
 KAFKA_SCHEMA_OLD_ID=60
 KAFKA_SCHEMA_NEW_ID=4
 ```
+
+## Links:
+
+**Github:** https://github.com/dayitv89/kafka-schema-patcher
+
+**Docker:** https://hub.docker.com/r/gauravds/kafka-schema-patcher
+
+## Build docker image locally:
+
+`docker build . --no-cache -t gauravds/kafka-schema-patcher:1.0`
+
+## Run docker image
+
+`docker run -it --env-file .env gauravds/kafka-schema-patcher:1.0`
+
+## Publish docker image:
+
+`docker push gauravds/kafka-schema-patcher:1.0`
