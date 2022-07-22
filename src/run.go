@@ -47,6 +47,7 @@ func Run() {
 
 func handleMessages(c *kafka.Consumer, topic string, gracefully chan bool, p *kafka.Producer) {
 	logrus.Info(" [*] Waiting for new kafka messages:", topic)
+	counter := 0
 	for {
 		if mustCloseRoutine {
 			break
@@ -73,14 +74,19 @@ func handleMessages(c *kafka.Consumer, topic string, gracefully chan bool, p *ka
 			}
 
 			if len(totalNewMsgs) > 0 {
-				p.PublishArray([]byte("avro"), totalNewMsgs)
+				counter += len(totalNewMsgs)
+				// p.PublishArray([]byte("avro"), totalNewMsgs)
 				totalTimeTaken, execTime = timeCalc(fetchStartTime, totalTimeTaken)
 				logrus.Info(fmt.Sprintf("%s, state: new msg found to republish in %v(total time: %v)", logID, execTime, totalTimeTaken))
+			} else {
+				logrus.Info("############# SEEMS YOU CAN STOP NOW", counter)
 			}
 
 			c.CommitMessages(c.Context, messages...)
 			totalTimeTaken, execTime = timeCalc(fetchStartTime, totalTimeTaken)
 			logrus.Warn(fmt.Sprintf("%s, state: commit in %v(total time: *%v*)", logID, execTime, totalTimeTaken))
+
+			logrus.Info("------------message new published", counter)
 			logrus.Info(" [*] Waiting for new kafka messages:", topic)
 		}
 	}
