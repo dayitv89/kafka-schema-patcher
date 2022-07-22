@@ -26,12 +26,12 @@ KAFKA_SCHEMA_NEW_ID=4
 
 ## Build docker image locally:
 
-`docker build . --no-cache -t gauravds/kafka-schema-patcher:1.0`
+`docker buildx build --platform=linux/amd64 . --no-cache -t gauravds/kafka-schema-patcher:1.1`
 
 ## Run docker image
 
-`docker run -it --env-file .env gauravds/kafka-schema-patcher:1.0`
+`docker run -it --env-file .env gauravds/kafka-schema-patcher:1.1`
 
 ## Publish docker image:
 
-`docker push gauravds/kafka-schema-patcher:1.0`
+`docker push gauravds/kafka-schema-patcher:1.1`
